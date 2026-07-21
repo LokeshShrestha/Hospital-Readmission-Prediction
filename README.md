@@ -2,6 +2,8 @@
 
 End-to-end MLOps pipeline that predicts whether a diabetic patient will be readmitted to the hospital. Built with Airflow, MLflow, FastAPI, Streamlit, and Evidently.
 
+![Entire Workflow](Entire%20workflow.png)
+
 ## Architecture
 
 ```
@@ -70,6 +72,8 @@ End-to-end MLOps pipeline that predicts whether a diabetic patient will be readm
 7. **Frontend** — Streamlit form → API call → result saved to SQLite
 8. **Monitoring** — Evidently compares current predictions vs training data; triggers retraining DAG on drift
 
+The DAG runs on a **monthly schedule** (`@monthly`), retraining the model on accumulated data to keep predictions accurate over time.
+
 ## Quick Start
 
 ### Prerequisites
@@ -111,10 +115,23 @@ python monitoring.py
 | POST   | `/predict`  | Predict readmission risk       |
 | GET    | `/status`   | Reload model & check status    |
 
+## Model Performance
+
+| Metric              | Value    |
+|---------------------|----------|
+| Accuracy            | 0.6441   |
+| Precision (weighted)| 0.6435   |
+| Recall (weighted)   | 0.6441   |
+| F1 Score (weighted) | 0.6390   |
+
 ## Dataset
 
 Diabetes 130-US hospitals (1999–2008) — 100k+ inpatient encounters with ~50 features including demographics, diagnoses, lab results, and medications.
 
-## Monitoring & Retraining
+## Scheduling & Retraining
 
-`monitoring.py` computes data drift using Evidently. If drift is detected, it POSTs to Airflow's REST API to trigger a new pipeline run, enabling continuous retraining.
+The Airflow DAG (`hospital_readmission`) is **scheduled monthly** (`@monthly`), automatically retraining the model on all accumulated data — including new predictions from the Streamlit frontend.
+
+### Drift-Triggered Retraining
+
+`monitoring.py` computes data drift using Evidently. If drift is detected, it POSTs to Airflow's REST API to trigger an **ad-hoc pipeline run** between scheduled cycles, enabling continuous retraining as data distribution shifts.
